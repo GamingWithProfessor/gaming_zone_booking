@@ -298,10 +298,10 @@ class _BookingPageState extends State<BookingPage> {
   List<String> availableSlots = [];
 
   final List<String> availableDevices = [
-    'PS5 Regular - 1',
-    'PS5 Regular - 2',
-    'PS5 Steering Wheel - 1',
-    'PS5 Steering Wheel - 2',
+    'PS5 Solo Play',
+    'PS5 Multiplayer',
+    'PS5 Racing Setup 1',
+    'PS5 Racing Setup 2',
   ];
 
   @override
@@ -325,8 +325,7 @@ class _BookingPageState extends State<BookingPage> {
     final int endHour = 23;
 
     final DateTime now = DateTime.now();
-    final bool isToday =
-        selectedDate.year == now.year &&
+    final bool isToday = selectedDate.year == now.year &&
         selectedDate.month == now.month &&
         selectedDate.day == now.day;
 
@@ -383,6 +382,103 @@ class _BookingPageState extends State<BookingPage> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDeviceInfoCard() {
+    if (selectedDevice == null) return const SizedBox.shrink();
+
+    Widget content;
+
+    switch (selectedDevice) {
+      case 'PS5 Solo Play':
+        content = _deviceInfoLayout(
+          title: 'PS5 Solo Play',
+          subtitle: 'Best for single-player gaming sessions.',
+          children: const [
+            _PriceTile(label: 'Price', value: '₹60 / hour'),
+          ],
+        );
+        break;
+
+      case 'PS5 Multiplayer':
+        content = _deviceInfoLayout(
+          title: 'PS5 Multiplayer Pricing',
+          subtitle: 'Select pricing based on player count.',
+          children: const [
+            _PriceTile(label: '2 Players', value: '₹100 / hour'),
+            _PriceTile(label: '3 Players', value: '₹150 / hour'),
+            _PriceTile(label: '4 Players', value: '₹200 / hour'),
+          ],
+        );
+        break;
+
+      case 'PS5 Racing Setup 1':
+        content = _deviceInfoLayout(
+          title: 'PS5 Racing Setup 1',
+          subtitle: 'Racing wheel experience with PS5 setup.',
+          children: const [
+            _PriceTile(label: 'Price', value: '₹100 / hour'),
+          ],
+        );
+        break;
+
+      case 'PS5 Racing Setup 2':
+        content = _deviceInfoLayout(
+          title: 'PS5 Racing Setup 2',
+          subtitle: 'Racing wheel experience with PS5 setup.',
+          children: const [
+            _PriceTile(label: 'Price', value: '₹100 / hour'),
+          ],
+        );
+        break;
+
+      default:
+        content = const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF8C42).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFFF8C42).withOpacity(0.25),
+        ),
+      ),
+      child: content,
+    );
+  }
+
+  Widget _deviceInfoLayout({
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFFFB067),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFFD1D5DB),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
     );
   }
 
@@ -614,12 +710,13 @@ class _BookingPageState extends State<BookingPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Select PS5',
+                  'Select PS5 Setup',
                   style: TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedDevice,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -628,7 +725,10 @@ class _BookingPageState extends State<BookingPage> {
                   items: availableDevices.map((device) {
                     return DropdownMenuItem<String>(
                       value: device,
-                      child: Text(device),
+                      child: Text(
+                        device,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -636,8 +736,9 @@ class _BookingPageState extends State<BookingPage> {
                       selectedDevice = value;
                     });
                   },
-                  hint: const Text('Choose PS5'),
+                  hint: const Text('Choose PS5 setup'),
                 ),
+                _buildDeviceInfoCard(),
                 const SizedBox(height: 16),
                 const Text(
                   'Select Date',
@@ -664,8 +765,7 @@ class _BookingPageState extends State<BookingPage> {
 
                     if (pickedDate != null) {
                       final day = pickedDate.day.toString().padLeft(2, '0');
-                      final month =
-                          pickedDate.month.toString().padLeft(2, '0');
+                      final month = pickedDate.month.toString().padLeft(2, '0');
                       final year = pickedDate.year.toString();
 
                       dateController.text = '$day-$month-$year';
@@ -681,6 +781,7 @@ class _BookingPageState extends State<BookingPage> {
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedSlot,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -714,6 +815,49 @@ class _BookingPageState extends State<BookingPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PriceTile extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _PriceTile({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFE5E7EB),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFFFB067),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -913,10 +1057,74 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage> {
   final TextEditingController searchController = TextEditingController();
   String searchQuery = '';
 
+  final Set<String> _seenPendingBookingIds = {};
+  bool _hasLoadedInitialPendingBookings = false;
+  String? _highlightedBookingId;
+
+  bool soundAlertEnabled = true;
+
+  void _playNewBookingSound() {
+    if (!soundAlertEnabled) return;
+
+    try {
+      final audio = html.AudioElement('assets/sounds/new_booking.mp3');
+      audio.volume = 1.0;
+      audio.play();
+    } catch (_) {
+      // Sound errors are ignored so booking notifications still work.
+    }
+  }
+
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  void _handleIncomingPendingBookings(List<QueryDocumentSnapshot> allDocs) {
+    final pendingDocs = allDocs.where((doc) {
+      final booking = doc.data() as Map<String, dynamic>;
+      return (booking['status'] ?? 'pending') == 'pending';
+    }).toList();
+
+    final currentPendingIds = pendingDocs.map((doc) => doc.id).toSet();
+
+    if (!_hasLoadedInitialPendingBookings) {
+      _seenPendingBookingIds
+        ..clear()
+        ..addAll(currentPendingIds);
+      _hasLoadedInitialPendingBookings = true;
+      return;
+    }
+
+    final newPendingIds = currentPendingIds.difference(_seenPendingBookingIds);
+
+    _seenPendingBookingIds
+      ..clear()
+      ..addAll(currentPendingIds);
+
+    if (newPendingIds.isEmpty) return;
+
+    final newestPendingDoc = pendingDocs.firstWhere(
+      (doc) => newPendingIds.contains(doc.id),
+      orElse: () => pendingDocs.first,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _highlightedBookingId = newestPendingDoc.id;
+    });
+
+    _playNewBookingSound();
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('New booking received'),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   Future<void> updateBookingStatus(String docId, String status) async {
@@ -1064,37 +1272,6 @@ Please arrive on time. Thank you!
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    selectedFilterDate == null
-                        ? 'Showing: All Bookings'
-                        : 'Showing: $selectedFilterDate',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: pickFilterDate,
-                  child: const Text('Filter Date'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      selectedFilterDate = null;
-                    });
-                  },
-                  child: const Text('Clear'),
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -1116,6 +1293,17 @@ Please arrive on time. Thank you!
 
                 final allDocs = snapshot.data!.docs;
 
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _handleIncomingPendingBookings(allDocs);
+                  }
+                });
+
+                final pendingCount = allDocs.where((doc) {
+                  final booking = doc.data() as Map<String, dynamic>;
+                  return (booking['status'] ?? 'pending') == 'pending';
+                }).length;
+
                 final docs = allDocs.where((doc) {
                   final booking = doc.data() as Map<String, dynamic>;
 
@@ -1124,161 +1312,297 @@ Please arrive on time. Thank you!
                   final phone =
                       (booking['phone'] ?? '').toString().toLowerCase();
 
-                  final matchesDate =
-                      selectedFilterDate == null ||
+                  final matchesDate = selectedFilterDate == null ||
                       bookingDate == selectedFilterDate;
 
-                  final matchesSearch =
-                      searchQuery.isEmpty ||
+                  final matchesSearch = searchQuery.isEmpty ||
                       name.contains(searchQuery) ||
                       phone.contains(searchQuery);
 
                   return matchesDate && matchesSearch;
                 }).toList();
 
-                if (docs.isEmpty) {
-                  return const Center(
-                    child: Text('No bookings found'),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final booking = doc.data() as Map<String, dynamic>;
-
-                    final bookingCode = booking['bookingCode'] ?? 'N/A';
-                    final name = booking['name'] ?? '';
-                    final phone = booking['phone'] ?? '';
-                    final device = booking['device'] ?? '';
-                    final date = booking['date'] ?? '';
-                    final slot = booking['slot'] ?? '';
-                    final status = booking['status'] ?? 'pending';
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF8C42).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    const Color(0xFFFF8C42).withOpacity(0.35),
+                              ),
+                            ),
+                            child: Text(
+                              'Pending Bookings: $pendingCount',
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                color: Color(0xFFFFB067),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            RichText(
-                              text: TextSpan(
-                                style: DefaultTextStyle.of(context).style,
-                                children: [
-                                  const TextSpan(text: 'Booking ID: '),
-                                  TextSpan(
-                                    text: '$bookingCode',
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.bold,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            selectedFilterDate == null
+                                ? 'Showing: All Bookings'
+                                : 'Showing: $selectedFilterDate',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              ElevatedButton(
+                                onPressed: pickFilterDate,
+                                child: const Text('Filter Date'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    selectedFilterDate = null;
+                                  });
+                                },
+                                child: const Text('Clear Filter'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: docs.isEmpty
+                          ? const Center(
+                              child: Text('No bookings found'),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 0,
+                              ),
+                              itemCount: docs.length,
+                              itemBuilder: (context, index) {
+                                final doc = docs[index];
+                                final booking =
+                                    doc.data() as Map<String, dynamic>;
+
+                                final bookingCode =
+                                    booking['bookingCode'] ?? 'N/A';
+                                final name = booking['name'] ?? '';
+                                final phone = booking['phone'] ?? '';
+                                final device = booking['device'] ?? '';
+                                final date = booking['date'] ?? '';
+                                final slot = booking['slot'] ?? '';
+                                final status = booking['status'] ?? 'pending';
+
+                                final isHighlighted =
+                                    doc.id == _highlightedBookingId;
+
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isHighlighted
+                                          ? const Color(0xFFFF8C42)
+                                          : Colors.transparent,
+                                      width: 2,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text('Phone: $phone'),
-                            Text('PS5: $device'),
-                            Text('Date: $date'),
-                            Text('Slot: $slot'),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Booking Status: $status',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: getStatusColor(status),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: status == 'approved'
-                                      ? null
-                                      : () async {
-                                          await updateBookingStatus(
-                                            doc.id,
-                                            'approved',
-                                          );
-                                        },
-                                  child: const Text('Approve'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: status == 'rejected'
-                                      ? null
-                                      : () async {
-                                          await updateBookingStatus(
-                                            doc.id,
-                                            'rejected',
-                                          );
-                                        },
-                                  child: const Text('Reject'),
-                                ),
-                                if (status == 'approved')
-                                  ElevatedButton(
-                                    onPressed: () async {
-                                      await openWhatsAppMessage(
-                                        phone: phone.toString(),
-                                        bookingCode: bookingCode.toString(),
-                                        name: name.toString(),
-                                        device: device.toString(),
-                                        date: date.toString(),
-                                        slot: slot.toString(),
-                                      );
-                                    },
-                                    child: const Text('WhatsApp'),
-                                  ),
-                                OutlinedButton(
-                                  onPressed: () async {
-                                    final shouldDelete = await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) {
-                                        return AlertDialog(
-                                          title: const Text('Delete Booking'),
-                                          content: const Text(
-                                            'Are you sure you want to delete this booking?',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: const Text('No'),
+                                    boxShadow: isHighlighted
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(0xFFFF8C42)
+                                                  .withOpacity(0.25),
+                                              blurRadius: 16,
+                                              spreadRadius: 1,
                                             ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: const Text('Yes'),
+                                          ]
+                                        : [],
+                                  ),
+                                  child: Card(
+                                    margin: EdgeInsets.zero,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          if (isHighlighted) ...[
+                                            const SizedBox(height: 6),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFF8C42)
+                                                    .withOpacity(0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: const Text(
+                                                'New Booking',
+                                                style: TextStyle(
+                                                  color: Color(0xFFFFB067),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
                                             ),
                                           ],
-                                        );
-                                      },
-                                    );
+                                          const SizedBox(height: 8),
+                                          RichText(
+                                            text: TextSpan(
+                                              style:
+                                                  DefaultTextStyle.of(context)
+                                                      .style,
+                                              children: [
+                                                const TextSpan(
+                                                  text: 'Booking ID: ',
+                                                ),
+                                                TextSpan(
+                                                  text: '$bookingCode',
+                                                  style: const TextStyle(
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Text('Phone: $phone'),
+                                          Text('PS5: $device'),
+                                          Text('Date: $date'),
+                                          Text('Slot: $slot'),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Booking Status: $status',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: getStatusColor(status),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Wrap(
+                                            spacing: 10,
+                                            runSpacing: 10,
+                                            children: [
+                                              ElevatedButton(
+                                                onPressed: status == 'approved'
+                                                    ? null
+                                                    : () async {
+                                                        await updateBookingStatus(
+                                                          doc.id,
+                                                          'approved',
+                                                        );
+                                                      },
+                                                child: const Text('Approve'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: status == 'rejected'
+                                                    ? null
+                                                    : () async {
+                                                        await updateBookingStatus(
+                                                          doc.id,
+                                                          'rejected',
+                                                        );
+                                                      },
+                                                child: const Text('Reject'),
+                                              ),
+                                              if (status == 'approved')
+                                                ElevatedButton(
+                                                  onPressed: () async {
+                                                    await openWhatsAppMessage(
+                                                      phone: phone.toString(),
+                                                      bookingCode: bookingCode
+                                                          .toString(),
+                                                      name: name.toString(),
+                                                      device: device.toString(),
+                                                      date: date.toString(),
+                                                      slot: slot.toString(),
+                                                    );
+                                                  },
+                                                  child: const Text('WhatsApp'),
+                                                ),
+                                              OutlinedButton(
+                                                onPressed: () async {
+                                                  final shouldDelete =
+                                                      await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (context) {
+                                                      return AlertDialog(
+                                                        title: const Text(
+                                                          'Delete Booking',
+                                                        ),
+                                                        content: const Text(
+                                                          'Are you sure you want to delete this booking?',
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                              context,
+                                                              false,
+                                                            ),
+                                                            child: const Text(
+                                                              'No',
+                                                            ),
+                                                          ),
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                              context,
+                                                              true,
+                                                            ),
+                                                            child: const Text(
+                                                              'Yes',
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      );
+                                                    },
+                                                  );
 
-                                    if (shouldDelete == true) {
-                                      await deleteBooking(doc.id);
-                                    }
-                                  },
-                                  child: const Text('Delete'),
-                                ),
-                              ],
+                                                  if (shouldDelete == true) {
+                                                    await deleteBooking(doc.id);
+                                                  }
+                                                },
+                                                child: const Text('Delete'),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                    ),
+                  ],
                 );
               },
             ),

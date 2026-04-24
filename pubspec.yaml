@@ -23,5 +23,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
   assets:
-    - assets/images/gaming_banner.png
+    - assets/sounds/new_booking.mp3
