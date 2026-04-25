@@ -296,6 +296,7 @@ class _BookingPageState extends State<BookingPage> {
   String? selectedDevice;
 
   List<String> availableSlots = [];
+  Set<String> approvedBookedSlots = {};
 
   final List<String> availableDevices = [
     'PS5 Solo Play',
@@ -353,6 +354,42 @@ class _BookingPageState extends State<BookingPage> {
     setState(() {
       availableSlots = slots;
       selectedSlot = null;
+    });
+  }
+
+  Future<void> loadApprovedBookedSlots() async {
+    final device = selectedDevice?.trim();
+    final date = dateController.text.trim();
+
+    if (device == null || date.isEmpty) {
+      setState(() {
+        approvedBookedSlots = {};
+        selectedSlot = null;
+      });
+      return;
+    }
+
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('bookings')
+        .where('device', isEqualTo: device)
+        .where('date', isEqualTo: date)
+        .where('status', isEqualTo: 'approved')
+        .get();
+
+    final bookedSlots = querySnapshot.docs
+        .map((doc) {
+          final booking = doc.data();
+          return (booking['slot'] ?? '').toString();
+        })
+        .where((slot) => slot.isNotEmpty)
+        .toSet();
+
+    setState(() {
+      approvedBookedSlots = bookedSlots;
+
+      if (selectedSlot != null && bookedSlots.contains(selectedSlot)) {
+        selectedSlot = null;
+      }
     });
   }
 
@@ -532,6 +569,7 @@ class _BookingPageState extends State<BookingPage> {
         .where('device', isEqualTo: device.trim())
         .where('date', isEqualTo: date.trim())
         .where('slot', isEqualTo: slot.trim())
+        .where('status', isEqualTo: 'approved')
         .get();
 
     return querySnapshot.docs.isNotEmpty;
@@ -661,17 +699,48 @@ class _BookingPageState extends State<BookingPage> {
       body: Center(
         child: SingleChildScrollView(
           child: Container(
-            width: 500,
+            width: 520,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1F2937).withOpacity(0.65),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: const Color(0xFFFF8C42).withOpacity(0.18),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Book Your PS5 Slot',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Reserve Your PS5 Session",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Choose your setup, date, and time slot to confirm your booking.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -681,6 +750,10 @@ class _BookingPageState extends State<BookingPage> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: nameController,
+                  keyboardType: TextInputType.name,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z ]')),
+                  ],
                   decoration: InputDecoration(
                     hintText: 'Enter your name',
                     border: OutlineInputBorder(
@@ -715,8 +788,11 @@ class _BookingPageState extends State<BookingPage> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: selectedDevice,
+                  value: selectedSlot,
                   isExpanded: true,
+                  onTap: () async {
+                    await loadApprovedBookedSlots();
+                  },
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -731,10 +807,14 @@ class _BookingPageState extends State<BookingPage> {
                       ),
                     );
                   }).toList(),
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     setState(() {
                       selectedDevice = value;
+                      selectedSlot = null;
+                      approvedBookedSlots = {};
                     });
+
+                    await loadApprovedBookedSlots();
                   },
                   hint: const Text('Choose PS5 setup'),
                 ),
@@ -756,11 +836,35 @@ class _BookingPageState extends State<BookingPage> {
                     suffixIcon: const Icon(Icons.calendar_today),
                   ),
                   onTap: () async {
+                    final DateTime now = DateTime.now();
+
+                    final DateTime today = DateTime(
+                      now.year,
+                      now.month,
+                      now.day,
+                    );
+
+                    final DateTime lastAllowedDate =
+                        today.add(const Duration(days: 2));
+
                     final DateTime? pickedDate = await showDatePicker(
                       context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2030),
+                      initialDate: today,
+                      firstDate: today,
+                      lastDate: lastAllowedDate,
+                      selectableDayPredicate: (DateTime day) {
+                        final DateTime cleanDay = DateTime(
+                          day.year,
+                          day.month,
+                          day.day,
+                        );
+
+                        return cleanDay.isAtSameMomentAs(today) ||
+                            cleanDay.isAtSameMomentAs(
+                                today.add(const Duration(days: 1))) ||
+                            cleanDay.isAtSameMomentAs(
+                                today.add(const Duration(days: 2)));
+                      },
                     );
 
                     if (pickedDate != null) {
@@ -770,6 +874,7 @@ class _BookingPageState extends State<BookingPage> {
 
                       dateController.text = '$day-$month-$year';
                       generateSlotsForDate(pickedDate);
+                      await loadApprovedBookedSlots();
                     }
                   },
                 ),
@@ -788,12 +893,88 @@ class _BookingPageState extends State<BookingPage> {
                     ),
                   ),
                   items: availableSlots.map((slot) {
+                    final bool isBooked = approvedBookedSlots.contains(slot);
+
                     return DropdownMenuItem<String>(
                       value: slot,
-                      child: Text(slot),
+                      enabled: !isBooked,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              slot,
+                              style: TextStyle(
+                                color: isBooked
+                                    ? Colors.grey.shade400
+                                    : Colors.white,
+                                fontWeight: isBooked
+                                    ? FontWeight.w500
+                                    : FontWeight.w400,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isBooked) ...[
+                            const SizedBox(width: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    const Color(0xFFEF4444).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color:
+                                      const Color(0xFFEF4444).withOpacity(0.45),
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.lock_rounded,
+                                    size: 12,
+                                    color: Color(0xFFFCA5A5),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Booked',
+                                    style: TextStyle(
+                                      color: Color(0xFFFCA5A5),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     );
                   }).toList(),
                   onChanged: (value) {
+                    if (value == null) return;
+
+                    if (approvedBookedSlots.contains(value)) {
+                      setState(() {
+                        selectedSlot = null;
+                      });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('This slot is already booked'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+
+                      return;
+                    }
+
                     setState(() {
                       selectedSlot = value;
                     });
@@ -1054,6 +1235,8 @@ class OwnerBookingsPage extends StatefulWidget {
 
 class _OwnerBookingsPageState extends State<OwnerBookingsPage> {
   String? selectedFilterDate;
+  String selectedStatusFilter = 'all';
+
   final TextEditingController searchController = TextEditingController();
   String searchQuery = '';
 
@@ -1061,17 +1244,64 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage> {
   bool _hasLoadedInitialPendingBookings = false;
   String? _highlightedBookingId;
 
-  bool soundAlertEnabled = true;
+  bool notificationPermissionGranted = false;
 
-  void _playNewBookingSound() {
-    if (!soundAlertEnabled) return;
+  Future<void> _requestNotificationPermission() async {
+    if (!kIsWeb) return;
 
     try {
-      final audio = html.AudioElement('assets/sounds/new_booking.mp3');
-      audio.volume = 1.0;
-      audio.play();
-    } catch (_) {
-      // Sound errors are ignored so booking notifications still work.
+      final permission = await html.Notification.requestPermission();
+
+      if (!mounted) return;
+
+      setState(() {
+        notificationPermissionGranted = permission == 'granted';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            permission == 'granted'
+                ? 'Booking notifications enabled'
+                : 'Notification permission not allowed',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Notifications not supported on this browser: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  void _showNewBookingNotification({
+    required String name,
+    required String device,
+    required String date,
+    required String slot,
+  }) {
+    if (!kIsWeb) return;
+    if (!notificationPermissionGranted) return;
+
+    html.Notification(
+      'New Booking Received',
+      body: '$name booked $device\n$date | $slot',
+      icon: 'icons/Icon-192.png',
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (kIsWeb) {
+      notificationPermissionGranted = html.Notification.permission == 'granted';
     }
   }
 
@@ -1112,11 +1342,18 @@ class _OwnerBookingsPageState extends State<OwnerBookingsPage> {
 
     if (!mounted) return;
 
+    final newestBooking = newestPendingDoc.data() as Map<String, dynamic>;
+
     setState(() {
       _highlightedBookingId = newestPendingDoc.id;
     });
 
-    _playNewBookingSound();
+    _showNewBookingNotification(
+      name: (newestBooking['name'] ?? '').toString(),
+      device: (newestBooking['device'] ?? '').toString(),
+      date: (newestBooking['date'] ?? '').toString(),
+      slot: (newestBooking['slot'] ?? '').toString(),
+    );
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1200,11 +1437,13 @@ Please arrive on time. Thank you!
   }
 
   Future<void> pickFilterDate() async {
+    final DateTime today = DateTime.now();
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2024),
-      lastDate: DateTime(2030),
+      initialDate: today,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 2)),
     );
 
     if (pickedDate != null) {
@@ -1315,11 +1554,16 @@ Please arrive on time. Thank you!
                   final matchesDate = selectedFilterDate == null ||
                       bookingDate == selectedFilterDate;
 
+                  final status = (booking['status'] ?? 'pending').toString();
+
                   final matchesSearch = searchQuery.isEmpty ||
                       name.contains(searchQuery) ||
                       phone.contains(searchQuery);
 
-                  return matchesDate && matchesSearch;
+                  final matchesStatus = selectedStatusFilter == 'all' ||
+                      status == selectedStatusFilter;
+
+                  return matchesDate && matchesSearch && matchesStatus;
                 }).toList();
 
                 return Column(
@@ -1353,6 +1597,25 @@ Please arrive on time. Thank you!
                             ),
                           ),
                           const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: notificationPermissionGranted
+                                  ? null
+                                  : _requestNotificationPermission,
+                              icon: Icon(
+                                notificationPermissionGranted
+                                    ? Icons.notifications_active
+                                    : Icons.notifications_off,
+                              ),
+                              label: Text(
+                                notificationPermissionGranted
+                                    ? 'Notifications Enabled'
+                                    : 'Enable Booking Notifications',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           Text(
                             selectedFilterDate == null
                                 ? 'Showing: All Bookings'
@@ -1377,7 +1640,50 @@ Please arrive on time. Thank you!
                                     selectedFilterDate = null;
                                   });
                                 },
-                                child: const Text('Clear Filter'),
+                                child: const Text('Clear Date'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              ChoiceChip(
+                                label: const Text('All'),
+                                selected: selectedStatusFilter == 'all',
+                                onSelected: (_) {
+                                  setState(() {
+                                    selectedStatusFilter = 'all';
+                                  });
+                                },
+                              ),
+                              ChoiceChip(
+                                label: const Text('Pending'),
+                                selected: selectedStatusFilter == 'pending',
+                                onSelected: (_) {
+                                  setState(() {
+                                    selectedStatusFilter = 'pending';
+                                  });
+                                },
+                              ),
+                              ChoiceChip(
+                                label: const Text('Approved'),
+                                selected: selectedStatusFilter == 'approved',
+                                onSelected: (_) {
+                                  setState(() {
+                                    selectedStatusFilter = 'approved';
+                                  });
+                                },
+                              ),
+                              ChoiceChip(
+                                label: const Text('Rejected'),
+                                selected: selectedStatusFilter == 'rejected',
+                                onSelected: (_) {
+                                  setState(() {
+                                    selectedStatusFilter = 'rejected';
+                                  });
+                                },
                               ),
                             ],
                           ),
